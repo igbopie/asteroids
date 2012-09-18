@@ -44,7 +44,6 @@
             var R=0;
             var THETA=1;
             
-            
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight-10;
             
@@ -62,7 +61,6 @@
                 context = canvas.getContext('2d');
                 if (context) {
                     
-                    
                     canvas.style.height=""+canvas.height+"px";
                     canvas.style.width=""+canvas.width+"px";
                     
@@ -70,12 +68,6 @@
                     canvas.height= canvas.height * window.devicePixelRatio;
                     context.scale(window.devicePixelRatio, window.devicePixelRatio);
                     
-                    // You are done! Now you can draw your first rectangle.
-                    // You only need to provide the (x,y) coordinates, followed by the width and
-                    // height dimensions.
-                   // Set the style properties.
-                  
-                   
                     setInterval(gameLoop,1/60*1000);
                     
                 }
@@ -148,6 +140,24 @@
                 
             }
             
+
+            
+            function calcNewPosition(position,speed,acceleration,time){
+                // d=vi*t+1/2*a*t^2
+                 var newPosition=[0,0];
+                newPosition[X]=speed[X]*time+1/2*acceleration[X]*time*time+position[X];
+                newPosition[Y]=speed[Y]*time+1/2*acceleration[Y]*time*time+position[Y];
+                return newPosition;
+            }
+            function calcNewSpeed(speed,acceleration,time){
+                // vf=vi+a*t
+                var newSpeed=[0,0];
+                newSpeed[X]=speed[X]+acceleration[X]*time;
+                newSpeed[Y]=speed[Y]+acceleration[Y]*time;
+                return newSpeed;
+            }
+            
+            
             function physicsShip(){
                 
                 var vectorAcc=polar2cartesian([shipAcceleration,shipRotation])
@@ -169,23 +179,6 @@
                 }
                 
             }
-            
-            function calcNewPosition(position,speed,acceleration,time){
-                // d=vi*t+1/2*a*t^2
-                 var newPosition=[0,0];
-                newPosition[X]=speed[X]*time+1/2*acceleration[X]*time*time+position[X];
-                newPosition[Y]=speed[Y]*time+1/2*acceleration[Y]*time*time+position[Y];
-                return newPosition;
-            }
-            function calcNewSpeed(speed,acceleration,time){
-                // vf=vi+a*t
-                var newSpeed=[0,0];
-                newSpeed[X]=speed[X]+acceleration[X]*time;
-                newSpeed[Y]=speed[Y]+acceleration[Y]*time;
-                return newSpeed;
-            }
-            
-            
             function drawShip(){
                 //context.fillStyle   = '#fff';
                 context.strokeStyle = 'green';
@@ -209,12 +202,48 @@
                 context.lineTo(point3[X],point3[Y]);
                 context.lineTo(point1[X],point1[Y]);
                 
+                
                 // Done! Now fill the shape, and draw the stroke.
                 // Note: your shape will not be visible until you call any of the two methods.
                 context.fill();
                 context.stroke();
                 context.closePath();
                 
+                //FIRE
+                if(shipAcceleration < 0 && time%2==0){
+                    point1=cartesianAddAngle([+shipSize,-shipSize/2],shipRotation);
+                    point2=cartesianAddAngle([+shipSize+20,0],shipRotation);
+                    point3=cartesianAddAngle([+shipSize,+shipSize/2],shipRotation);
+                
+                    point1=addCartesian(point1,shipPosition);
+                    point2=addCartesian(point2,shipPosition);
+                    point3=addCartesian(point3,shipPosition);
+                
+                    context.moveTo(point1[X],point1[Y]);
+                    context.lineTo(point2[X],point2[Y]);
+                    context.lineTo(point3[X],point3[Y]);
+                    context.lineTo(point1[X],point1[Y]);
+                    context.fill();
+                    context.stroke();
+                    context.closePath();
+                }else if(shipAcceleration > 0 && time%2==0){
+                    point1=cartesianAddAngle([+shipSize,-shipSize/2],shipRotation);
+                    point2=cartesianAddAngle([+shipSize-20,0],shipRotation);
+                    point3=cartesianAddAngle([+shipSize,+shipSize/2],shipRotation);
+                        
+                    point1=addCartesian(point1,shipPosition);
+                    point2=addCartesian(point2,shipPosition);
+                    point3=addCartesian(point3,shipPosition);
+                        
+                    context.moveTo(point1[X],point1[Y]);
+                    context.lineTo(point2[X],point2[Y]);
+                    context.lineTo(point3[X],point3[Y]);
+                    context.lineTo(point1[X],point1[Y]);
+                    context.fill();
+                    context.stroke();
+                    context.closePath();
+                    
+                }
                 
                 //Log
                 document.getElementById("log").innerHTML=shipPosition[X]+"<br />"+shipPosition[Y];
