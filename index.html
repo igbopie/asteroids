@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Title of the document</title>
+        
+        <style>
+            
+            body,html{
+                background-color:black;
+                color:green;
+                padding: 0px;
+                margin: 0px;
+            }
+            
+        </style>
+    </head>
+    
+    <body>
+       
+        <div id="log" style="position:absolute;top:0;left:0;width:100px;height:200px;">
+            
+            
+        </div>
+        <canvas id="myCanvas" >
+            Fallback content, in case the browser does not support Canvas.
+        </canvas>
+        
+        
+        
+        <script>
+            
+            // Get a reference to the element.
+            var canvas = document.getElementById('myCanvas');
+            var shipSize=20;
+            var shipPosition=[100,100];
+            var shipAcceleration=0;
+            var shipRotation=0;
+            var shipRotationAcc=0;
+            var shipSpeed=[0,0];
+            var time=new Date().getTime();
+            var diffTime=0;
+            var X=0;
+            var Y=1;
+            var R=0;
+            var THETA=1;
+            
+            
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight-10;
+            
+            window.addEventListener('keydown',doKeyDown,false);
+            window.addEventListener('keyup',doKeyUp,false);
+            
+            
+            var context;
+            
+            // Always check for properties and methods, to make sure your code doesn't break
+            // in other browsers.
+            if (canvas && canvas.getContext) {
+                // Get the 2d context.
+                // Remember: you can only initialize one context per element.
+                context = canvas.getContext('2d');
+                if (context) {
+                    
+                    
+                    canvas.style.height=""+canvas.height+"px";
+                    canvas.style.width=""+canvas.width+"px";
+                    
+                    canvas.width=canvas.width * window.devicePixelRatio;
+                    canvas.height= canvas.height * window.devicePixelRatio;
+                    context.scale(window.devicePixelRatio, window.devicePixelRatio);
+                    
+                    // You are done! Now you can draw your first rectangle.
+                    // You only need to provide the (x,y) coordinates, followed by the width and
+                    // height dimensions.
+                   // Set the style properties.
+                  
+                   
+                    setInterval(gameLoop,1/60*1000);
+                    
+                }
+            }
+            function doKeyUp(evt){
+                shipAcceleration=0;
+                shipRotationAcc=0;
+            }
+            function doKeyDown(evt){
+                switch (evt.keyCode) {
+                    case 38:  /* Up arrow was pressed */
+                        shipAcceleration=-.001;
+                    break;
+                    case 40:  /* Down arrow was pressed */
+                    shipAcceleration=.001;
+                    break;
+                    case 37:  /* Left arrow was pressed */
+                    shipRotationAcc=-1;
+                    break;
+                    case 39:  /* Right arrow was pressed */
+                    shipRotationAcc=1;
+                    break;
+                }
+            }
+            
+            function cartesian2polar(cartesian){
+                var polar=[0,0];
+                polar[R]=Math.sqrt(Math.pow(cartesian[X],2)+Math.pow(cartesian[Y],2));
+                polar[THETA]=Math.atan2(cartesian[Y], cartesian[X]);
+                return polar;
+            }
+            
+            function polar2cartesian(polar) {
+                var cartesian=[0,0];
+                cartesian[X]=polar[R] * Math.cos(polar[THETA]);
+                cartesian[Y]=polar[R] * Math.sin(polar[THETA]);
+                return cartesian;
+            }
+            function cartesianAddAngle(cartesian,angle){
+                 var polar=cartesian2polar(cartesian);
+                polar[THETA]=polar[THETA]+angle;
+                return polar2cartesian(polar);
+            }
+            
+            function addCartesian(cartesian1,cartesian2){
+                var result=[0,0];
+                result[X]=cartesian1[X]+cartesian2[X];
+                result[Y]=cartesian1[Y]+cartesian2[Y];
+                return result;
+            }
+            
+            function clear() {
+                context.clearRect(0, 0, canvas.width , canvas.height);
+            }
+            
+            function gameLoop(){
+                var newtime=new Date().getTime()
+                diffTime=newtime-time;
+                time=newtime;
+                
+                
+                shipRotation+=0.1*shipRotationAcc;
+                
+                
+                clear();
+                physicsShip();
+                drawShip();
+                
+                
+                
+            }
+            
+            function physicsShip(){
+                
+                var vectorAcc=polar2cartesian([shipAcceleration,shipRotation])
+                shipPosition=calcNewPosition(shipPosition,shipSpeed,vectorAcc,diffTime);
+                shipSpeed=calcNewSpeed(shipSpeed,vectorAcc,diffTime);
+                
+                if(shipPosition[X]<0){
+                    shipPosition[X]=canvas.width/window.devicePixelRatio;
+                }
+                if(shipPosition[X]>canvas.width/window.devicePixelRatio){
+                    shipPosition[X]=0;
+                }
+                
+                if(shipPosition[Y]<0){
+                    shipPosition[Y]=canvas.height/window.devicePixelRatio;
+                }
+                if(shipPosition[Y]>canvas.height/window.devicePixelRatio){
+                    shipPosition[Y]=0;
+                }
+                
+            }
+            
+            function calcNewPosition(position,speed,acceleration,time){
+                // d=vi*t+1/2*a*t^2
+                 var newPosition=[0,0];
+                newPosition[X]=speed[X]*time+1/2*acceleration[X]*time*time+position[X];
+                newPosition[Y]=speed[Y]*time+1/2*acceleration[Y]*time*time+position[Y];
+                return newPosition;
+            }
+            function calcNewSpeed(speed,acceleration,time){
+                // vf=vi+a*t
+                var newSpeed=[0,0];
+                newSpeed[X]=speed[X]+acceleration[X]*time;
+                newSpeed[Y]=speed[Y]+acceleration[Y]*time;
+                return newSpeed;
+            }
+            
+            
+            function drawShip(){
+                //context.fillStyle   = '#fff';
+                context.strokeStyle = 'green';
+                context.lineWidth   = 2;
+                
+                context.beginPath();
+                
+                 // Start from the top-left point.
+                //ROTATION
+                var point1=cartesianAddAngle([-shipSize,0],shipRotation);
+                var point2=cartesianAddAngle([+shipSize,-2*shipSize/3],shipRotation);
+                var point3=cartesianAddAngle([+shipSize,+2*shipSize/3],shipRotation);
+                
+                //LOCATION
+                point1=addCartesian(point1,shipPosition);
+                point2=addCartesian(point2,shipPosition);
+                point3=addCartesian(point3,shipPosition);
+                
+                context.moveTo(point1[X],point1[Y]);
+                context.lineTo(point2[X],point2[Y]);
+                context.lineTo(point3[X],point3[Y]);
+                context.lineTo(point1[X],point1[Y]);
+                
+                // Done! Now fill the shape, and draw the stroke.
+                // Note: your shape will not be visible until you call any of the two methods.
+                context.fill();
+                context.stroke();
+                context.closePath();
+                
+                
+                //Log
+                document.getElementById("log").innerHTML=shipPosition[X]+"<br />"+shipPosition[Y];
+            }
+            
+            
+        </script>
+    
+    
+    </body>
+    
+</html>
