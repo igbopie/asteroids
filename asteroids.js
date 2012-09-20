@@ -55,13 +55,14 @@ toCartesian: function(){
 //--------------------------------------------
 // CLASS PhysicObject
 //--------------------------------------------
-var PhysicObject = function(size,position,acceleration,rotation,speed,shape){
+var PhysicObject = function(size,position,acceleration,rotation,speed,shape,lineWidth){
     this.size=size;
     this.position=position;
     this.acceleration=acceleration;
     this.rotation=rotation;
     this.speed=speed;
     this.shape=shape;
+    this.lineWidth=lineWidth;
 }
 PhysicObject.prototype = {
 size:0,
@@ -69,25 +70,48 @@ position:new Cartesian(0,0),
 acceleration:0,
 rotation:0,
 speed:new Cartesian(0,0),
+ttl:-1,
+resistance:0,
+limitSpeed:false,
 calcNewPosition:function(time){
     // d=vi*t+1/2*a*t^2
     var acceleration=new Polar(this.acceleration,this.rotation).toCartesian();
+    var speed=this.speed.toPolar();
+    if(speed.r>0){
+        var resistance=new Polar(-this.resistance,speed.theta).toCartesian();
+        acceleration.add(resistance);
+    }
     this.position.x=this.speed.x*time+1/2*acceleration.x*time*time+this.position.x;
     this.position.y=this.speed.y*time+1/2*acceleration.y*time*time+this.position.y;
 },
 calcNewSpeed:function(time){
     // vf=vi+a*t
     var acceleration=new Polar(this.acceleration,this.rotation).toCartesian();
+    var speed=this.speed.toPolar();
+    if(speed.r>0){
+        var resistance=new Polar(-this.resistance,speed.theta).toCartesian();
+        acceleration.add(resistance);
+    }
     this.speed.x=this.speed.x+acceleration.x*time;
     this.speed.y=this.speed.y+acceleration.y*time;
+    
+    if(this.limitSpeed){
+        speed=this.speed.toPolar();
+        if(speed.r > .7){
+            speed.r=.7;
+            this.speed=speed.toCartesian();
+        }
+    }
+    
 },
 doPhysics:function(time){
-    this.calcNewPosition(time);
     this.calcNewSpeed(time);
+    this.calcNewPosition(time);
 },
 paint:function(context){
     context.strokeStyle = 'green';
-    context.lineWidth   = 2;
+    context.fillStyle='transparent';
+    context.lineWidth   = this.lineWidth;
    
     context.beginPath();
     
@@ -135,16 +159,18 @@ log:function(){
 // SHIP MODEL
 var shipRotationAcc=0;
 var shipSize=20;
-var ship=new PhysicObject(shipSize,new Cartesian(100,100),0,.4,new Cartesian(.01,0.01),[new Cartesian(+shipSize,0),
+var ship=new PhysicObject(shipSize,new Cartesian(100,100),0,.4,new Cartesian(0,0),[new Cartesian(+shipSize,0),
                                                                             new Cartesian(-shipSize,-2*shipSize/3),
-                                                                            new Cartesian(-shipSize,+2*shipSize/3)]);
+                                                                            new Cartesian(-shipSize,+2*shipSize/3)],2);
+ship.resistance=.0003;
+ship.limitSpeed=true;
 
 var forwardFire=new PhysicObject(shipSize,new Cartesian(100,100),0,0,new Cartesian(0,0),[new Cartesian(-ship.size,-ship.size/2),
                                                                                    new Cartesian(-ship.size-20,0),
-                                                                                   new Cartesian(-ship.size,+ship.size/2)]);
+                                                                                   new Cartesian(-ship.size,+ship.size/2)],2);
 var brakeFire=new PhysicObject(shipSize,new Cartesian(100,100),0,0,new Cartesian(0,0), [new Cartesian(-ship.size,-ship.size/2),
                                                                                   new Cartesian(-ship.size+20,0),
-                                                                                  new Cartesian(-ship.size,+ship.size/2)]);
+                                                                                  new Cartesian(-ship.size,+ship.size/2)],2);
 
 var asteroid1=new PhysicObject(20,new Cartesian(0,0),0,0,new Cartesian(.05,.01), [new Cartesian(-10,10),
                                                                                   new Cartesian(5,20),
@@ -155,7 +181,7 @@ var asteroid1=new PhysicObject(20,new Cartesian(0,0),0,0,new Cartesian(.05,.01),
                                                                                   new Cartesian(5,-10),
                                                                                   new Cartesian(-10,-20),
                                                                                   new Cartesian(-10,-10),
-                                                                                  new Cartesian(-5,5)]);
+                                                                                  new Cartesian(-5,5)],2);
 
 var asteroid2=new PhysicObject(20,new Cartesian(0,0),0,1,new Cartesian(-.06,-.01), [new Cartesian(-110,100),
                                                                                   new Cartesian(70,230),
@@ -166,12 +192,13 @@ var asteroid2=new PhysicObject(20,new Cartesian(0,0),0,1,new Cartesian(-.06,-.01
                                                                                   new Cartesian(50,-120),
                                                                                   new Cartesian(-120,-200),
                                                                                   new Cartesian(-110,-100),
-                                                                                  new Cartesian(-30,50)]);
+                                                                                  new Cartesian(-30,50)],2);
 
 
 
 
 var asteroids=[asteroid1,asteroid2];
+var shoots=new Array();
 // SIMULATOR MODEL
 var time=new Date().getTime();
 var diffTime=0;
@@ -204,9 +231,18 @@ if (canvas && canvas.getContext) {
 }
 
 function doKeyUp(evt){
-    ship.acceleration=0;
-    shipRotationAcc=0;
+    switch (evt.keyCode) {
+        case 38:  /* Up arrow was pressed */
+        case 40:  /* Down arrow was pressed */
+            ship.acceleration=0;
+            break;
+        case 37:  /* Left arrow was pressed */
+        case 39:  /* Right arrow was pressed */
+            shipRotationAcc=0;
+            break;
+    }
 }
+
 
 function doKeyDown(evt){
     switch (evt.keyCode) {
@@ -222,6 +258,20 @@ function doKeyDown(evt){
         case 39:  /* Right arrow was pressed */
             shipRotationAcc=1;
             break;
+        case 32: /* space */
+            var sp=ship.speed.toPolar();
+            sp.r=sp.r+.5;
+            sp.theta=ship.rotation;
+            var shoot=new PhysicObject(1,ship.position.clone(),0,0,sp.toCartesian(), [new Cartesian(1,1),
+                                                                                      new Cartesian(1,-1),
+                                                                                      new Cartesian(-1,-1),
+                                                                                      new Cartesian(-1,1),
+                                                                                      ],2);
+            shoot.ttl=70;
+            shoots.push(shoot);
+           
+            break;
+
     }
 }
 
@@ -245,6 +295,19 @@ function gameLoop(){
     for(index in asteroids){
         physics(asteroids[index]);
         asteroids[index].paint(context);
+    }
+    for(index in shoots){
+        var shoot=shoots[index];
+        shoot.ttl--;
+        if(shoot.ttl<0){
+            delete shoots[index];
+        }
+        if(shoot != undefined){
+            physics(shoot);
+            shoot.paint(context);
+        }
+        
+        
     }
     
     drawShip();
