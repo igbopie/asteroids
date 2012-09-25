@@ -78,7 +78,7 @@ PhysicObject.prototype = {
         var acceleration=new Polar(this.acceleration,this.rotation).toCartesian();
         var speed=this.speed.toPolar();
         if(speed.r>0){
-            var resistance=new Polar(-this.resistance,speed.theta).toCartesian();
+            var resistance=new Polar(-this.resistance*speed.r,speed.theta).toCartesian();
             acceleration.add(resistance);
         }
         this.position.x=this.speed.x*time+1/2*acceleration.x*time*time+this.position.x;
@@ -89,7 +89,8 @@ PhysicObject.prototype = {
         var acceleration=new Polar(this.acceleration,this.rotation).toCartesian();
         var speed=this.speed.toPolar();
         if(speed.r>0){
-            var resistance=new Polar(-this.resistance,speed.theta).toCartesian();
+        	
+            var resistance=new Polar(-this.resistance*speed.r,speed.theta).toCartesian();
             acceleration.add(resistance);
         }
         this.speed.x=this.speed.x+acceleration.x*time;
@@ -184,7 +185,7 @@ var points=0;
 var ship=new PhysicObject(shipSize,new Cartesian(100,100),0,0,new Cartesian(0,0),[new Cartesian(+shipSize,0),
                                                                             new Cartesian(-shipSize,-2*shipSize/3),
                                                                             new Cartesian(-shipSize,+2*shipSize/3)],2);
-ship.resistance=.0003;
+ship.resistance=.0015;
 ship.limitSpeed=true;
 
 var forwardFire=new PhysicObject(shipSize,new Cartesian(100,100),0,0,new Cartesian(0,0),[new Cartesian(-ship.size,-ship.size/2),
@@ -201,17 +202,17 @@ forwardFire.collides = function(){
     return false;
 }
 
-
-var asteroid1=new PhysicObject(20,new Cartesian(200,200),0,0,new Cartesian(0.06,0.02), [new Cartesian(-10,10),
-                                                                                  new Cartesian(5,20),
-                                                                                  new Cartesian(10,20),
-                                                                                  new Cartesian(10,5),
-                                                                                  new Cartesian(20,-10),
-                                                                                  new Cartesian(10,-20),
-                                                                                  new Cartesian(5,-10),
-                                                                                  new Cartesian(-10,-20),
-                                                                                  new Cartesian(-10,-10),
-                                                                                  new Cartesian(-5,5)],2);
+var asteroid1Shape=[new Cartesian(-10,10),
+                      new Cartesian(5,20),
+                      new Cartesian(10,20),
+                      new Cartesian(10,5),
+                      new Cartesian(20,-10),
+                      new Cartesian(10,-20),
+                      new Cartesian(5,-10),
+                      new Cartesian(-10,-20),
+                      new Cartesian(-10,-10),
+                      new Cartesian(-5,5)];
+var asteroid1=new PhysicObject(20,new Cartesian(200,200),0,0,new Cartesian(0.06,0.02), asteroid1Shape,2);
 
 var asteroid2=new PhysicObject(20,new Cartesian(200,200),0,1,new Cartesian(-.06,-.01), [new Cartesian(-110,100),
                                                                                   new Cartesian(70,230),
@@ -223,17 +224,21 @@ var asteroid2=new PhysicObject(20,new Cartesian(200,200),0,1,new Cartesian(-.06,
                                                                                   new Cartesian(-120,-200),
                                                                                   new Cartesian(-110,-100),
                                                                                   new Cartesian(-30,50)],2);
+                                                                                  
+                                                       
 
 
-var asteroids=[asteroid1];//,asteroid2];
+var asteroids=new Array();//=[asteroid1];//,asteroid2];
 var shoots=new Array();
 // SIMULATOR MODEL
 var time=new Date().getTime();
 var diffTime=0;
 var context;
 var canvas = document.getElementById('myCanvas');
-var FPS=60;
+var FPS=40;
 var jsInterval;
+var nAsteroids=5;
+var nAsteroidsLeft;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight-10;
 
@@ -256,6 +261,11 @@ if (canvas && canvas.getContext) {
         canvas.width=canvas.width * window.devicePixelRatio;
         canvas.height= canvas.height * window.devicePixelRatio;
         context.scale(window.devicePixelRatio, window.devicePixelRatio);
+        
+        ramdomizeAsteroids();
+        
+        ship.position.x = canvas.width /(2*window.devicePixelRatio);
+        ship.position.y = canvas.height /(2*window.devicePixelRatio);
         
         jsInterval=setInterval(gameLoop,1/FPS*1000);
         
@@ -300,7 +310,7 @@ function doKeyDown(evt){
                                                                                       new Cartesian(-1,-1),
                                                                                       new Cartesian(-1,1),
                                                                                       ],2);
-            shoot.ttl=70;
+            shoot.ttl=800;
             shoots.push(shoot);
            
             break;
@@ -309,7 +319,34 @@ function doKeyDown(evt){
 }
 
 
-
+function ramdomizeAsteroids(){
+	asteroids=new Array();
+	nAsteroidsLeft=nAsteroids;
+	for(var i=0;i<nAsteroids;i++){
+		var x=Math.floor(Math.random()*canvas.width/ window.devicePixelRatio);
+		var spX=Math.random()/20;
+		var y=Math.floor(Math.random()*canvas.height/ window.devicePixelRatio);
+		
+		var spY=Math.random()/20;
+		
+		if(Math.random()>0.5){
+			spX*=-1;
+		}
+		if(Math.random()>0.5){
+			spY*=-1;
+		}
+		
+		var rotation=Math.random();
+		
+	
+	
+		asteroids.push(new PhysicObject(20,new Cartesian(x,y),0,rotation,new Cartesian(spX,spY), asteroid1Shape,2));
+	}
+	
+	
+	
+	
+}
 
 
 function clear() {
@@ -318,54 +355,57 @@ function clear() {
 
 function gameLoop(){
     
-    var newtime=new Date().getTime()
-    diffTime=newtime-time;
-    time=newtime;
-    
-    ship.rotation+=0.1*shipRotationAcc;
-    
-    collisionDetection();
-    clear();
-    context.beginPath();
-    
-    physics(ship);
-    
-    // Then asteroids
-    
-    for(var index in asteroids){
-        var asteroid=asteroids[index];
-        if(asteroid != undefined){
-            physics(asteroid);
-            asteroid.paint(context);
-        }
-    }
-    
-    //drawColissionMap();
-    
-    // Then Ships
-    //if(ship.collides()){
-    drawShip();
-    //clearInterval(jsInterval);
-    //}
-    
-    // First paint shoots
-    for(var index in shoots){
-        var shoot=shoots[index];
-        shoot.ttl--;
-        if(shoot.ttl<0){
-            delete shoots[index];
-        }
-        if(shoot != undefined){
-            physics(shoot);
-            shoot.paint(context);
-        }
-    }
-    
-   
-  
-    
-    
-    context.closePath();
+	var newtime=new Date().getTime()
+	diffTime=newtime-time;
+	time=newtime;
+	
+	ship.rotation+=0.1*shipRotationAcc;
+	
+	collisionDetection();
+	clear();
+	context.beginPath();
+	
+	physics(ship);
+	
+	// Then asteroids
+	
+	for(var index in asteroids){
+	    var asteroid=asteroids[index];
+	    if(asteroid != undefined){
+	        physics(asteroid);
+	        asteroid.paint(context);
+	    }
+	}
+	
+	//drawColissionMap();
+	
+	// Then Ships
+	//if(ship.collides()){
+	drawShip();
+	//clearInterval(jsInterval);
+	//}
+	
+	// First paint shoots
+	for(var index in shoots){
+	    var shoot=shoots[index];
+	    shoot.ttl-=diffTime;
+	    if(shoot.ttl<0){
+	        delete shoots[index];
+	    }
+	    if(shoot != undefined){
+	        physics(shoot);
+	        shoot.paint(context);
+	    }
+	}
+	
+	
+	if(nAsteroidsLeft== 0){
+	  nAsteroids++;
+	  ramdomizeAsteroids();
+	}
+	
+	
+	context.closePath();
     
 }
 function collisionDetection(){
@@ -379,6 +419,7 @@ function collisionDetection(){
             var shoot=shoots[shootsIndex];
             if(shoot != undefined && shoot.collides()){
                 delete asteroids[asteroidsIndex];
+                nAsteroidsLeft--;
                 points+=20;
             }
         }
