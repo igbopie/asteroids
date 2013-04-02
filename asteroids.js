@@ -111,11 +111,7 @@ PhysicObject.prototype = {
     },
     paint:function(context){
         
-        if(this.collides()){
-            context.fillStyle = 'red';
-            context.fillRect(this.position.x-5, this.position.y-5, 10, 10);
-        }
-        
+                
         context.strokeStyle = 'green';
         context.fillStyle='transparent';
         context.lineWidth   = this.lineWidth;
@@ -153,6 +149,7 @@ PhysicObject.prototype = {
             point.add(this.position);
             //Colission
             if(isColission(point)){
+            	collisionPoints.push(this.position);	    
                 return true;
             }
         }
@@ -160,11 +157,12 @@ PhysicObject.prototype = {
     }
     ,
     log:function(){
-        return "X:"+this.position.x+"<br />"+
+        /*return "X:"+this.position.x+"<br />"+
             "Y:"+this.position.y+"<br />"+
             "Acc:"+this.acceleration+"<br />"+
             "Speed:"+this.speed.toPolar().r+"<br />"+
-            "Points:"+points+"<br />";
+            "Points:"+points+"<br />";*/
+        return "Points:"+points+"<br />Max Score:"+maxScore;
     }
 }
 //--------------------------------------------
@@ -182,6 +180,7 @@ var shipSize=20;
 var clickX=100;
 var clickY=100;
 var points=0;
+var maxScore=0;
 var ship=new PhysicObject(shipSize,new Cartesian(100,100),0,0,new Cartesian(0,0),[new Cartesian(+shipSize,0),
                                                                             new Cartesian(-shipSize,-2*shipSize/3),
                                                                             new Cartesian(-shipSize,+2*shipSize/3)],2);
@@ -212,6 +211,12 @@ var asteroid1Shape=[new Cartesian(-10,10),
                       new Cartesian(-10,-20),
                       new Cartesian(-10,-10),
                       new Cartesian(-5,5)];
+/*
+var asteroid1Shape=[new Cartesian(-20,20),
+                      new Cartesian(-20,-20),
+                      new Cartesian(20,-20),
+                      new Cartesian(20,20)];  */                    
+                  
 var asteroid1=new PhysicObject(20,new Cartesian(200,200),0,0,new Cartesian(0.06,0.02), asteroid1Shape,2);
 
 var asteroid2=new PhysicObject(20,new Cartesian(200,200),0,1,new Cartesian(-.06,-.01), [new Cartesian(-110,100),
@@ -227,7 +232,7 @@ var asteroid2=new PhysicObject(20,new Cartesian(200,200),0,1,new Cartesian(-.06,
                                                                                   
                                                        
 
-
+var logger=document.getElementById("log");
 var asteroids=new Array();//=[asteroid1];//,asteroid2];
 var shoots=new Array();
 // SIMULATOR MODEL
@@ -237,8 +242,9 @@ var context;
 var canvas = document.getElementById('myCanvas');
 var FPS=40;
 var jsInterval;
-var nAsteroids=5;
+var nAsteroids=5; 
 var nAsteroidsLeft;
+var collisionPoints=new Array();
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight-10;
 
@@ -358,7 +364,7 @@ function gameLoop(){
 	var newtime=new Date().getTime()
 	diffTime=newtime-time;
 	time=newtime;
-	
+	collisionPoints=new Array();
 	ship.rotation+=0.1*shipRotationAcc;
 	
 	collisionDetection();
@@ -398,6 +404,14 @@ function gameLoop(){
 	    }
 	}
 	
+	//Paint collision points
+	for(var index in collisionPoints){
+		var collision=collisionPoints[index];
+	    context.fillStyle = 'red';
+        context.fillRect(collision.x-5, collision.y-5, 10, 10);
+     }
+
+	
 	
 	if(nAsteroidsLeft== 0){
 	  nAsteroids++;
@@ -409,6 +423,26 @@ function gameLoop(){
     
 }
 function collisionDetection(){
+	/*
+	//Asteroids between asteroids
+    for(var asteroidsIndex1 in asteroids){
+        var asteroid1=asteroids[asteroidsIndex1];
+        for(var asteroidsIndex2 in asteroids){
+        	  var asteroid2=asteroids[asteroidsIndex2];
+        	  if(asteroidsIndex2 != asteroidsIndex1){
+        	    clear();
+        	    context.beginPath();
+        	    asteroid1.paint(context);
+        	    if(asteroid2.collides()){
+	        	    //nothing to do
+        	    }
+        
+        	}
+        	  
+        	  
+        }
+    }*/
+    //Asteroids and Shoots
     for(var asteroidsIndex in asteroids){
         var asteroid=asteroids[asteroidsIndex];
         
@@ -419,12 +453,46 @@ function collisionDetection(){
             var shoot=shoots[shootsIndex];
             if(shoot != undefined && shoot.collides()){
                 delete asteroids[asteroidsIndex];
+                delete shoots[shootsIndex];
                 nAsteroidsLeft--;
                 points+=20;
+                if(points>maxScore){
+	                maxScore=points;
+                }
             }
         }
         context.closePath();
+    } 
+    //Asteroids and Ship
+    var shipCollision = false;
+    for(var asteroidsIndex in asteroids){
+        var asteroid=asteroids[asteroidsIndex];
+        
+        clear();
+        context.beginPath();
+        asteroid.paint(context);
+        if(ship.collides()){
+              shipCollision = true;  
+              break;
+        }
+        context.closePath();
+        
+        clear();
+        context.beginPath();
+        ship.paint(context);
+        if(asteroid.collides()){
+        	shipCollision = true; 
+        	break;
+        }
+        context.closePath();
+    } 
+    if(shipCollision){
+	    points=0;
+	    ramdomizeAsteroids();
+        ship.position.x = canvas.width /(2*window.devicePixelRatio);
+        ship.position.y = canvas.height /(2*window.devicePixelRatio);
     }
+   
 }
 function physics(object){
     
@@ -463,7 +531,7 @@ function drawShip(){
     }
     
     //Log
-    document.getElementById("log").innerHTML=ship.log();
+    logger.innerHTML=ship.log();
 }
 
 function isColission(point){
