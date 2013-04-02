@@ -488,6 +488,7 @@ function collisionDetection(){
     } 
     if(shipCollision){
 	    points=0;
+	    nAsteroids=5;
 	    ramdomizeAsteroids();
         ship.position.x = canvas.width /(2*window.devicePixelRatio);
         ship.position.y = canvas.height /(2*window.devicePixelRatio);
